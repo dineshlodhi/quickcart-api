@@ -1,0 +1,45 @@
+name: Continuous Integration
+
+# Trigger this workflow on every push and pull request to any branch
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    # Run the job on a fresh Ubuntu Linux virtual machine provided by GitHub
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the repository code into the runner's workspace
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Install Node.js and enable dependency caching
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm' # This tells setup-node to cache the ~/.npm directory
+
+      # 3. Install dependencies exactly as defined in package-lock.json
+      # npm ci is faster and stricter than npm install
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Verify there are no TypeScript compilation errors
+      - name: Run Type Check
+        run: npm run typecheck
+
+      # 5. Verify the code passes all ESLint rules
+      - name: Run Linter
+        run: npm run lint
+
+      # 6. Compile the TypeScript source into JavaScript inside dist/
+      - name: Build Application
+        run: npm run build
+
+      # 7. Verify the production Dockerfile is valid and builds successfully.
+      # We do not push this image anywhere; we simply ensure the build doesn't crash.
+      - name: Verify Docker Build
+        run: docker build -t mini-zepto-test .

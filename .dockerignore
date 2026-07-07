@@ -1,0 +1,30 @@
+# ─── .dockerignore ──────────────────────────────────────────────────
+# Prevents unnecessary files from being copied into the Docker build
+# context. This speeds up builds and prevents accidentally leaking
+# local secrets or environment files into the container image.
+# ────────────────────────────────────────────────────────────────────
+
+# Dependencies (Docker must run its own npm install)
+node_modules
+npm-debug.log
+
+# Build outputs (Docker must compile its own code)
+dist
+
+# Git history and OS metadata
+.git
+.gitignore
+.DS_Store
+
+# Docker configuration files (not needed inside the image)
+Dockerfile
+.dockerignore
+docker-compose.yml
+render.yaml
+
+# Local environment variables (Render/ECS will inject these)
+.env
+.env.*
+
+# Tests and documentation
+*.md

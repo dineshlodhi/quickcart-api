@@ -1,0 +1,23 @@
+# ─── compose.yaml ───────────────────────────────────────────────────
+# This file declaratively defines how to run our application locally.
+# It replaces complex terminal commands with a version-controlled config.
+# ────────────────────────────────────────────────────────────────────
+
+services:
+  # The name of our service. If we add a database later, it would be a peer to this.
+  api:
+    # Tells Compose to look in the current directory ('.') for a Dockerfile to build
+    build: .
+    
+    # Names the container explicitly instead of generating a random name
+    container_name: mini-zepto-api
+    
+    # Maps port 3000 on your host machine to port 3000 inside the container
+    ports:
+      - "3000:3000"
+      
+    # Environment variables injected into the container at runtime.
+    # We set NODE_ENV to production to mimic the production environment locally.
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
