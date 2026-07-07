@@ -22,45 +22,29 @@ jobs:
           node-version: '20'
           cache: 'npm' # This tells setup-node to cache the ~/.npm directory
 
-      # 3. Update npm itself — several recent npm releases patch the internal
-      # "Exit handler never called!" race condition seen on hosted runners,
-      # and the npm bundled with setup-node's Node build can lag behind.
-      - name: Update npm
-        run: npm install -g npm@latest
-
-      # 4. Install dependencies exactly as defined in package-lock.json.
-      # npm ci is faster and stricter than npm install.
-      # --no-audit --no-fund skip the post-install registry calls that can hang
-      # on GitHub-hosted runners. The retry loop guards against npm's own
-      # acknowledged nondeterministic "Exit handler never called!" race
-      # (https://github.com/npm/cli/issues/8913) rather than a real dependency
-      # or config problem — it isn't reproducible on demand.
+      # 3. Install dependencies exactly as defined in package-lock.json.
+      # --ignore-scripts skips package lifecycle scripts. The only one that
+      # runs on Linux here is esbuild's postinstall (pulled in transitively
+      # via tsx), which hangs indefinitely on GitHub-hosted runners. CI never
+      # needs esbuild's binary — typecheck/lint/build use tsc and eslint only,
+      # and tsx is used solely by `npm run dev`. The timeout is a safety net
+      # so a future hang fails fast instead of stalling for 40+ minutes.
       - name: Install dependencies
-        run: |
-          n=0
-          until npm ci --include=dev --no-audit --no-fund; do
-            n=$((n + 1))
-            if [ "$n" -ge 3 ]; then
-              echo "npm ci failed after 3 attempts"
-              exit 1
-            fi
-            echo "npm ci failed (attempt $n) — retrying in 10s..."
-            sleep 10
-          done
+        run: timeout --signal=KILL 300 npm ci --ignore-scripts --include=dev --no-audit --no-fund
 
-      # 5. Verify there are no TypeScript compilation errors
+      # 4. Verify there are no TypeScript compilation errors
       - name: Run Type Check
         run: npm run typecheck
 
-      # 6. Verify the code passes all ESLint rules
+      # 5. Verify the code passes all ESLint rules
       - name: Run Linter
         run: npm run lint
 
-      # 7. Compile the TypeScript source into JavaScript inside dist/
+      # 6. Compile the TypeScript source into JavaScript inside dist/
       - name: Build Application
         run: npm run build
 
-      # 8. Verify the production Dockerfile is valid and builds successfully.
+      # 7. Verify the production Dockerfile is valid and builds successfully.
       # We do not push this image anywhere; we simply ensure the build doesn't crash.
       - name: Verify Docker Build
         run: docker build -t mini-zepto-test .

@@ -10,8 +10,11 @@ WORKDIR /app
 # This allows Docker to cache the 'npm ci' layer unless package files change.
 COPY package*.json ./
 
-# Install all dependencies (including devDependencies required for build)
-RUN npm ci
+# Install all dependencies (including devDependencies required for build).
+# --ignore-scripts skips esbuild's postinstall (transitive via tsx), which
+# hangs on some Linux build environments. The build only needs tsc, not
+# esbuild's binary, so skipping it is safe.
+RUN npm ci --ignore-scripts
 
 # Copy the rest of the application source code
 COPY . .
