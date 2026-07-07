@@ -22,15 +22,45 @@ jobs:
           node-version: '20'
           cache: 'npm' # This tells setup-node to cache the ~/.npm directory
 
-      # 3. Install dependencies exactly as defined in package-lock.json.
-      # --ignore-scripts skips package lifecycle scripts. The only one that
-      # runs on Linux here is esbuild's postinstall (pulled in transitively
-      # via tsx), which hangs indefinitely on GitHub-hosted runners. CI never
-      # needs esbuild's binary — typecheck/lint/build use tsc and eslint only,
-      # and tsx is used solely by `npm run dev`. The timeout is a safety net
-      # so a future hang fails fast instead of stalling for 40+ minutes.
+      # 3. DIAGNOSTIC: probe the runner's network path to the npm registry.
+      # The identical `npm ci` runs in 7s in a Linux container but hangs 5+ min
+      # here, so the suspect is this runner's network (e.g. an IPv6 route to the
+      # registry that blackholes and stalls every request until timeout).
+      # This step never fails the job — it just prints what it finds.
+      - name: Network diagnostics
+        continue-on-error: true
+        run: |
+          echo "=== npm registry config ==="
+          npm config get registry
+          echo "=== proxy env vars ==="
+          env | grep -i proxy || echo "(none)"
+          echo "=== DNS for registry.npmjs.org ==="
+          getent ahosts registry.npmjs.org || true
+          echo "=== curl over IPv4 ==="
+          curl -4 -sS -o /dev/null -w 'ipv4: HTTP %{http_code} in %{time_total}s\n' --max-time 30 https://registry.npmjs.org/express || echo "ipv4 FAILED/timeout"
+          echo "=== curl over IPv6 ==="
+          curl -6 -sS -o /dev/null -w 'ipv6: HTTP %{http_code} in %{time_total}s\n' --max-time 30 https://registry.npmjs.org/express || echo "ipv6 FAILED/timeout (this would explain the hang)"
+          echo "=== single npm registry op (bounded 60s) ==="
+          timeout 60 npm view express version || echo "npm view FAILED/timeout"
+
+      # 4. Install dependencies with fail-fast network settings + full logging.
+      # Short fetch-timeout/retries mean a stalled connection errors in seconds
+      # (and retries) instead of hanging ~5 min per request. This both diagnoses
+      # (silly log shows the exact URL it stalls on) and may fix the hang.
+      # On any exit, we dump npm's own debug log so the failure is visible.
       - name: Install dependencies
-        run: timeout --signal=KILL 300 npm ci --ignore-scripts --include=dev --no-audit --no-fund
+        run: |
+          set +e
+          timeout --signal=KILL 180 npm ci --ignore-scripts --include=dev \
+            --no-audit --no-fund \
+            --fetch-timeout=30000 --fetch-retries=2 \
+            --fetch-retry-mintimeout=5000 --fetch-retry-maxtimeout=30000 \
+            --loglevel silly
+          code=$?
+          echo "=== npm exit code: $code ==="
+          echo "=== npm debug log (last 120 lines) ==="
+          cat ~/.npm/_logs/*-debug-*.log 2>/dev/null | tail -120 || echo "(no debug log found)"
+          exit $code
 
       # 4. Verify there are no TypeScript compilation errors
       - name: Run Type Check
