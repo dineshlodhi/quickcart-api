@@ -23,9 +23,11 @@ jobs:
           cache: 'npm' # This tells setup-node to cache the ~/.npm directory
 
       # 3. Install dependencies exactly as defined in package-lock.json
-      # npm ci is faster and stricter than npm install
+      # npm ci is faster and stricter than npm install.
+      # --no-audit --no-fund skip the post-install registry calls that can hang
+      # on GitHub-hosted runners and trigger npm's "Exit handler never called!" bug.
       - name: Install dependencies
-        run: npm ci --include=dev
+        run: npm ci --include=dev --no-audit --no-fund
 
       # 4. Verify there are no TypeScript compilation errors
       - name: Run Type Check
