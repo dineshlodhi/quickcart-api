@@ -63,7 +63,7 @@ export function createApp(): express.Application {
   // ── Health Endpoint ─────────────────────────────
   // In production, cloud platforms ping this endpoint to verify the app is alive.
   // Returning version and environment helps verify successful deployments.
-  app.get('/health', (_req, res) => {
+  app.get('/health', (_req: express.Request, res: express.Response) => {
     res.json(successResponse({
       status: 'healthy',
       appName: config.appName,
