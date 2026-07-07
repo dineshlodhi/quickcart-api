@@ -8,7 +8,19 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     rules: {
-      // Add any specific rules here. For now, the recommended defaults are excellent.
+      // Honor two intentional, idiomatic patterns for unused identifiers:
+      //  - args/vars prefixed with `_` are deliberately unused (e.g. Express
+      //    error handlers need a 4th `_next` param they don't call).
+      //  - `ignoreRestSiblings` allows destructuring-to-omit a field, e.g.
+      //    `const { stock, ...publicFields } = product` to strip `stock`.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+        },
+      ],
     }
   }
 );
