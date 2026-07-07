@@ -25,7 +25,7 @@ jobs:
       # 3. Install dependencies exactly as defined in package-lock.json
       # npm ci is faster and stricter than npm install
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --include=dev
 
       # 4. Verify there are no TypeScript compilation errors
       - name: Run Type Check
