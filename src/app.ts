@@ -65,7 +65,7 @@ export function createApp(): express.Application {
   // Returning version and environment helps verify successful deployments.
   app.get('/health', (_req: express.Request, res: express.Response) => {
     res.json(successResponse({
-      status: 'healthy',
+      status: 'healthy (Render Deploy Test)',
       appName: config.appName,
       version: pkg.version,
       uptime: process.uptime(),
